@@ -64,7 +64,7 @@ namespace delay_checker
 		// printf("\npub to sub took %f sec\n", diff.count());
 	}
 
-	void DelayChecker::outputCallback(const erp42_communication::ERP42_input& msg)
+	void DelayChecker::outputCallback(const erp42_communication::ERP42_feedback& msg)
 	{
 		auto end = std::chrono::steady_clock::now();
 		std::chrono::duration<double> diff = end - start;

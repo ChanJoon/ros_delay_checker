@@ -4,7 +4,7 @@
 #include <chrono>
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
-#include "erp42_communication/ERP42_input.h"
+#include "erp42_communication/ERP42_feedback.h"
 
 namespace delay_checker
 {
@@ -34,7 +34,7 @@ namespace delay_checker
 			float turn;		// Angular velocity (rad/s)
 
 			void inputCallback(const geometry_msgs::Twist& msg);
-			void outputCallback(const erp42_communication::ERP42_input& msg);
+			void outputCallback(const erp42_communication::ERP42_feedback& msg);
 			int getch();
 
 	};	// class DelayChecker
