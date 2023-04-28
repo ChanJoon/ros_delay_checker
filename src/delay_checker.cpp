@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <termios.h>
+#include <math.h>
+
+#define RPM_PER_LINEAR 35
 
 namespace delay_checker
 {
@@ -13,12 +16,11 @@ namespace delay_checker
 		_nh.param("input_topic", input_topic, std::string("/cmd_vel"));	
 		_nh.param("output_topic", output_topic, std::string("/output"));
 
-		input_sub = _nh.subscribe(input_topic, 10, &DelayChecker::inputCallback, this);	
-		output_sub = _nh.subscribe(output_topic, 10, &DelayChecker::outputCallback, this);
-		pub = _nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
+		input_sub = _nh.subscribe(input_topic, 1, &DelayChecker::inputCallback, this);	
+		output_sub = _nh.subscribe(output_topic, 1, &DelayChecker::outputCallback, this);
+		pub = _nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 
 		message = R"(
-
 			w: moving forward    ( +1 m/s )
 			s: moving backward   ( -1 m/s )
 			a: turn left         ( +1 rad/s )
@@ -26,29 +28,33 @@ namespace delay_checker
 			----------------------------------
 			Enter: Publishing to Twist
 			anything else: stop
-
 			CTRL-C to quit
-
 		)";
+
 		// Initialize
 		terminate = false;
+		key_input_done = false;
 		twist.linear.x = 0.0; twist.linear.y = 0.0; twist.linear.z = 0.0;
 		twist.angular.x = 0.0; twist.angular.y = 0.0; twist.angular.z = 0.0;
 
 		speed = 0.0;
 		turn = 0.0;
-
+		prev_speed = 0.0;
 	}
 
 	void DelayChecker::spinNode()
 	{
-		ros::Rate rate(50);
+		ros::Rate rate(20);
 		while (_nh.ok()){
-			pub.publish(twist);
 			ros::spinOnce();
 
-			if(!terminate) printf("%s\n", message);
-			interface();
+			if(!terminate) {
+				printf("%s\n", message);
+				interface();
+				pub.publish(twist);
+				start = std::chrono::steady_clock::now();
+				terminate = true;
+			}
 
 			rate.sleep();
 		}
@@ -56,21 +62,20 @@ namespace delay_checker
 
 	void DelayChecker::inputCallback(const geometry_msgs::Twist& msg)
 	{
-		// Currently not used
-		// auto end = std::chrono::steady_clock::now();
-		// std::chrono::duration<double> diff = end - start;
-
-		// printf("\nmsg subscribed!");
-		// printf("\npub to sub took %f sec\n", diff.count());
+		prev_speed = msg.linear.x;
 	}
 
 	void DelayChecker::outputCallback(const erp42_communication::ERP42_feedback& msg)
 	{
-		auto end = std::chrono::steady_clock::now();
-		std::chrono::duration<double> diff = end - start;
+		if(msg.speed_rpm >= threshhold || fabs(msg.steer_degree) >= 0.1) {
+				auto end_speed = std::chrono::steady_clock::now();
+				std::chrono::duration<double> diff_speed = end_speed - start;
 
-		printf("\nmsg subscribed!");
-		printf("\npub to sub took %f sec\n", diff.count());
+				printf("\n\n-----[msg recived]-----\n");
+				printf("threshhold %f\n", threshhold);
+				printf("speed %f, steer %f : pub to sub took %f sec\n", msg.speed_rpm, msg.steer_degree, diff_speed.count());
+				terminate = false;
+		}
 	}
 
 	int DelayChecker::getch()
@@ -135,14 +140,13 @@ namespace delay_checker
 				printf("\nENTER pressed!\n");
 				// Forbid backward direction
 				if (speed < 0) speed = 0.0;
-				else if (turn < 0) turn = 0.0;
 
 				// Update
 				twist.linear.x = speed; twist.linear.y = 0.0; twist.linear.z = 0.0;
-
 				twist.angular.x = 0.0; twist.angular.y = 0.0; twist.angular.z = turn;
 
-				start = std::chrono::steady_clock::now();
+				threshhold = (speed > 1 && prev_speed != 0) ? prev_speed * RPM_PER_LINEAR + 0.5 : 0.5;
+
 				break;
 			}
 			else if (key == '\x03'){
@@ -159,6 +163,7 @@ namespace delay_checker
 				printf("\rCurrent: speed %f\tturn %f | Invalid command! %c", speed, turn, key);
 			}
 		}
+   key_input_done = true;
 	}
 
 

@@ -13,13 +13,7 @@ namespace delay_checker
 		public:
 
 			DelayChecker(const ros::NodeHandle &nh);
-
-			void interface();
 			void spinNode();
-
-			ros::NodeHandle _nh;
-			ros::Publisher pub;
-			ros::Subscriber input_sub, output_sub;
 
 		private:
 
@@ -28,13 +22,21 @@ namespace delay_checker
 
 			int key;
 			bool terminate;
+      bool key_input_done;
+			double threshhold;
+
+			ros::NodeHandle _nh;
+			ros::Publisher pub;
+			ros::Subscriber input_sub, output_sub;
 
 			geometry_msgs::Twist twist;
 			float speed;	// Linear velocity (m/s)
 			float turn;		// Angular velocity (rad/s)
+			float prev_speed;
 
 			void inputCallback(const geometry_msgs::Twist& msg);
 			void outputCallback(const erp42_communication::ERP42_feedback& msg);
+			void interface();
 			int getch();
 
 	};	// class DelayChecker
