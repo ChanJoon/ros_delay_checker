@@ -1,6 +1,8 @@
 # ROS Delay Checker
 This ROS package checks the delay between topics.
 
+At present, we are facing a delay issue on the ERP42 platform. To address this issue, we are utilizing a communication node that converts the message type "geometry_msgs::Twist" to the ERP42 protocol. By publishing the "/cmd_vel" topic, we are able to receive a callback from this node.
+
 Installation
 To install the package, follow these steps:
 
